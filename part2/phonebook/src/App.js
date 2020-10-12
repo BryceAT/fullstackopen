@@ -1,6 +1,6 @@
 import React, { useState , useEffect } from 'react';
-import axios from 'axios';
 import './App.css';
+import personService from './services/persons'
 
 const Filter = (props) => {
   return(
@@ -26,11 +26,13 @@ const PersonForm = (props) => {
   </div>
   )
 } 
-const Persons = ({persons, newFilter}) => {
+const Persons = ({persons, newFilter,deletePerson}) => {
   return(
   <div>
     {persons.filter(person => person.name.toLowerCase().includes(newFilter.toLowerCase()))
-            .map(person => <div key={person.name}>{person.name} {person.number}</div>)}
+            .map(person => <div key={person.id}>{person.name} {person.number}  
+                            <button type="submit" onClick={() => deletePerson(person.id)}>delete</button>
+                            </div>)}
   </div>
   )
 } 
@@ -43,13 +45,31 @@ const App = () => {
 
   useEffect(() => {
     console.log('effect')
-    axios
-      .get('http://localhost:3001/persons')
-      .then(response => {
+    personService.getAll()
+                  .then(response => {
+                    console.log('promise fulled')
+                    setPersons(response.data)
+                  })
+  },[])
+  const deletePerson = (id) => {
+    console.log(`person ${id} is to be removed`)
+    const result = window.confirm('Are you sure you want to delete person '+
+    `"${persons.filter(person => person.id === id)[0].name}"?`)
+    if (result) {
+      personService.removePerson(id).then(response => {
+        console.log(`person ${id} is no more `)
+        personService.getAll()
+        .then(response => {
           console.log('promise fulled')
           setPersons(response.data)
+        })
       })
-  },[])
+      
+      } else {
+        console.log(`nevermind about ${id}`)
+      }
+  }
+
   const addPerson = (event) => {
     event.preventDefault()
     if (persons.map(person=>person.name).findIndex(curname => curname === newName) === -1) 
@@ -58,13 +78,24 @@ const App = () => {
       name: newName,
       number: newNumber,
       date: new Date().toISOString(),
-      id: persons.length + 1,
+      id: Math.max(persons.map(person => person.id)) + 1,
     }
-    setPersons(persons.concat(personObject))
+    personService.create(personObject).then(response => {
+      setPersons(persons.concat(response.data))
+    })
     setNewName('')
     setNewNumber('')
   } else {
-  window.alert(newName + 'is already added to the phonebook')
+  const result = window.confirm(newName + 'is already added to the phonebook, replace the old number with a new one?')
+  if (result){
+    const person = persons.find(p => p.name === newName)
+    const changedPerson = {...person, number:newNumber}
+    personService.update(person.id, changedPerson).then(response => {
+      setPersons(persons.map(p => p.id !== person.id ? p : response.data))
+    })
+    setNewName('')
+    setNewNumber('')
+  }
   }
   }
   const handleNameChange = (event) => {
@@ -88,7 +119,7 @@ const App = () => {
                   number = {newNumber} numberChange={handleNumberChange}
                   submitOnClick ={addPerson}/>
       <h2>Numbers</h2>
-      <Persons persons={persons} newFilter = {newFilter}/>
+      <Persons persons={persons} newFilter={newFilter} deletePerson={deletePerson}/>
     </div>
   )
 }
