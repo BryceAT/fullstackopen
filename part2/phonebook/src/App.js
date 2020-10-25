@@ -2,6 +2,36 @@ import React, { useState , useEffect } from 'react';
 import './App.css';
 import personService from './services/persons'
 
+const Notification = ({message,noteStyle}) => {
+  const goodStyle = {
+    color: 'green',
+    fontStyle: 'italic',
+    fontSize: 16
+  }
+  const errorStyle = {
+    color: 'red',
+    background: 'lightgrey',
+    fontSize: 20,
+    borderStyle: 'solid',
+    borderRadius: 5,
+    padding: 10,
+    marginBottom: 10
+  }
+  if (message === null) {
+    return null
+  }
+  const notificationStyle = noteStyle === 'error'
+                          ? errorStyle
+                          : goodStyle
+  return (
+    <div style={notificationStyle}>
+      {message}
+    </div>
+  )
+}
+
+
+
 const Filter = (props) => {
   return(
   <div>
@@ -42,6 +72,8 @@ const App = () => {
   const [ newName, setNewName ] = useState('')
   const [ newNumber, setNewNumber ] = useState('')
   const [ newFilter, setNewFilter ] = useState('')
+  const [ newNotification, setNewNotification] = useState('')
+  const [ newNoteStyle, setNewNoteStyle] = useState(null)
 
   useEffect(() => {
     console.log('effect')
@@ -49,6 +81,14 @@ const App = () => {
                   .then(response => {
                     console.log('promise fulled')
                     setPersons(response.data)
+                  })
+                  .catch(error => {
+                    setNewNotification('could not load data, try npm run server')
+                    setNewNoteStyle('error')
+                    setTimeout(() => {
+                      setNewNotification('')
+                      setNewNoteStyle(null)
+                    },5000)
                   })
   },[])
   const deletePerson = (id) => {
@@ -62,6 +102,14 @@ const App = () => {
         .then(response => {
           console.log('promise fulled')
           setPersons(response.data)
+        })
+        .catch(error => {
+          setNewNotification(`error in remove, ${id} could not be removed`)
+          setNewNoteStyle('error')
+          setTimeout(() => {
+            setNewNotification('')
+            setNewNoteStyle(null)
+          },5000)
         })
       })
       
@@ -82,6 +130,10 @@ const App = () => {
     }
     personService.create(personObject).then(response => {
       setPersons(persons.concat(response.data))
+      setNewNotification(`Added ${newName}`)
+      setTimeout(() => {
+        setNewNotification(null)
+      }, 5000)
     })
     setNewName('')
     setNewNumber('')
@@ -92,6 +144,18 @@ const App = () => {
     const changedPerson = {...person, number:newNumber}
     personService.update(person.id, changedPerson).then(response => {
       setPersons(persons.map(p => p.id !== person.id ? p : response.data))
+      setNewNotification(`updated ${newName}`)
+      setTimeout(() => {
+        setNewNotification(null)
+      }, 5000)
+    })
+    .catch(error => {
+      setNewNotification(`error in update ${newName} does not exists`)
+      setNewNoteStyle('error')
+      setTimeout(() => {
+        setNewNotification('')
+        setNewNoteStyle(null)
+      },5000)
     })
     setNewName('')
     setNewNumber('')
@@ -111,6 +175,7 @@ const App = () => {
   return (
     <div>
       <h2>Phonebook</h2>
+      <Notification message={newNotification} noteStyle={newNoteStyle}/>
       <Filter value={newFilter} onChange={handleFilterChange} />
       
       <h2>add a new</h2>
